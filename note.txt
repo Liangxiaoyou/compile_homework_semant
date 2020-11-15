@@ -1,0 +1,19 @@
+//首先是调用了sement()历程，然后余下的五个函数被逐一调用，给我的感觉是多轮扫描、逐步完善语义
+initialize_constants(); //初始化常量类型
+install_calls(decls);   //初始化函数
+check_main();           //检查主函数
+install_globalVars(decls);//全局变量初始化
+check_calls(decls); //检查函数合法性
+
+//以下函数被声明在不同的类中，最开始是stmt类中被声明为纯虚函数，后在各种句子的继承类中逐一声明
+//这些函数要在上述五个函数中合理调用来完成分析
+check(); //检查句子
+checkType(); //检查表达式类型，并返回对应的symbol,应该是要在对函数或者句子做检查的时候，遇到expr时调用的
+
+//函数调用过程中肯定会用到idtable的相关表
+//这些信息在附属代码包里
+
+
+static ostream& error_stream = cerr; //输出错误信息流
+static int semant_errors = 0; //错误计数
+static Decl curr_decl = 0;
