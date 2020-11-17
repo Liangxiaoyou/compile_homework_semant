@@ -1,9 +1,23 @@
-//首先是调用了sement()历程，然后余下的五个函数被逐一调用，给我的感觉是多轮扫描、逐步完善语义
-initialize_constants(); //初始化常量类型
-install_calls(decls);   //初始化函数
+//semant-phase.cc
+//首先是以Program类型的变量 ast_root作为程序的根节点，然后用seal_yyparse()生成了语法树
+//接着会调用类型里的semant()函数，这个函数是本次要完成的历程，分为以下几个步骤
+
+
+
+//首先是调用了semant()历程，然后余下的五个函数被逐一调用，给我的感觉是多轮扫描、逐步完善语义
+//这些函数应该如何来完成，首先要理解
+initialize_constants(); //初始化常量类型，已给出
+install_calls(decls);   //函数初始化，需要遍历语法树，完成相应的处理，decls类型是program 
 check_main();           //检查主函数
 install_globalVars(decls);//全局变量初始化
 check_calls(decls); //检查函数合法性
+
+//如何去遍历这个decls是一个非常重要的问题
+//每个函数都要进行一次遍历，去分析“语义”，检查正确性
+//如何管理idtable表格，使用表格，也是重要的问题
+
+
+
 
 //以下函数被声明在不同的类中，最开始是stmt类中被声明为纯虚函数，后在各种句子的继承类中逐一声明
 //这些函数要在上述五个函数中合理调用来完成分析
@@ -13,7 +27,73 @@ checkType(); //检查表达式类型，并返回对应的symbol,应该是要在�
 //函数调用过程中肯定会用到idtable的相关表
 //这些信息在附属代码包里
 
+//
+
 
 static ostream& error_stream = cerr; //输出错误信息流
 static int semant_errors = 0; //错误计数
 static Decl curr_decl = 0;
+
+//  Program_class
+//     Program_class
+// 
+//  Decl_class
+//     VariableDecl_class
+//     CallDecl_class
+//   
+//  Variable_class
+//     variable_class
+//
+//  Stmt_class
+//     StmtBlock_class
+//     IfStmt_class
+//     WhileStmt_class
+//     ForStmt_class
+//     BreakStmt_class
+//     ContinueStmt_class
+//     ReturnStmt_class
+//
+//  Expr_class
+//     Assign_class
+//     Add_class
+//     Minus_class
+//     Multi_class
+//     Divide_class
+//     Mod_class
+//     Neg_class
+//     Lt_class
+//     Le_class
+//     Equ_class
+//     Neq_class
+//     Ge_class
+//     Gt_class
+//     And_class
+//     Or_class
+//     Not_class
+//     Bnot_class
+//     Band_class
+//     Bor_class
+//     Bxor_class
+//     No_expr_class
+//     Object_class
+//     Call_class
+//     Constant_int_class
+//     Constant_float_class
+//     Constant_bool_class
+//     Constant_string_class
+//     Actual_class
+
+
+tree.h
+//     Elem nth(int n);
+//     returns the nth element of a list.  If the list has fewer than n
+//     elements, an error is generated.
+//
+//     int first();
+//     int next(int n);
+//     int more(int n);
+//       These three functions define a simple iterator for stepping through
+//     list elements in order.  If l is a list, a typical use would be:
+//
+//     for(int i = l->first(); l->more(i); i = l->next(i))
+//         ... operate on l->nth(i) ...

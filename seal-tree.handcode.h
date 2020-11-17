@@ -21,7 +21,7 @@ void assert_Symbol(Symbol b);
 Symbol copy_Symbol(Symbol b);
 
 class Program_class;
-typedef Program_class *Program;
+typedef Program_class *Program; //定义了一个指针指向program_class的类型 Program
 class Decl_class;
 typedef Decl_class *Decl;
 class VariableDecl_class;

@@ -1,0 +1,56 @@
+#4
+Program
+  #4
+  Variable Declaration
+    #4
+    Variable
+      (name)
+      a
+      (type)
+      Int
+  #5
+  Call Declaration
+    (name)
+    main
+    (parameters)
+    (
+    )
+    (return type)
+    Void
+    (body)
+    #5
+    Statement Block
+      (variable declarations)
+      (
+      )
+      (statements)
+      (
+      #6
+      ReturnStmt
+        (return value)
+        #6
+        No_expr
+      )
+  #8
+  Call Declaration
+    (name)
+    main1
+    (parameters)
+    (
+    )
+    (return type)
+    Void
+    (body)
+    #8
+    Statement Block
+      (variable declarations)
+      (
+      )
+      (statements)
+      (
+      #9
+      ReturnStmt
+        (return value)
+        #9
+        No_expr
+      )

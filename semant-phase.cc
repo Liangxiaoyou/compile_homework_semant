@@ -21,13 +21,13 @@ int main(int argc, char *argv[]) {
 	}
   curr_lineno = 1;
   handle_flags(argc,argv);
-  seal_yyparse();
+  seal_yyparse(); //生成语法树
   if(omerrs != 0 || ast_root == NULL){
     cout << "syntax analyze failed. Please make sure syntax parser passed." << endl;
     exit(-1);
   }
-  ast_root->semant();
-  ast_root->dump_with_types(cout,0);
+  ast_root->semant(); 
+  ast_root->dump_with_types(cout,0); //打印语法树
   fclose(fin);
 }
 
