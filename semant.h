@@ -15,6 +15,8 @@
 #include "list.h"
 #include <stack>
 
+#include<typeinfo>
+
 #define TRUE 1
 #define FALSE 0
 

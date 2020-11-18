@@ -8,7 +8,7 @@
 
 class Program_class : public tree_node {
 protected:
-    Decls decls;
+    Decls decls;  //Decls 为 list_node<Decl>
 public:
     Program_class(Decls a1) {
        decls = a1;

@@ -10,7 +10,7 @@ extern char *curr_filename;
 static ostream& error_stream = cerr; //输出错误信息流
 static int semant_errors = 0; //错误计数
 static Decl curr_decl = 0;
-static tree_node * to_main; //指向第一个main函数的指针，方便用于check main
+static Decl_class * to_main; //指向第一个main函数的指针，方便用于check main
 
 typedef SymbolTable<Symbol, Symbol> ObjectEnvironment; // name, type  
 ObjectEnvironment objectEnv; //一个保存symbol的列表
@@ -96,74 +96,84 @@ static void install_calls(Decls decls) {
     objectEnv.enterscope();
     for(int i = decls->first(); decls->more(i); i = decls->next(i))
     {
-        //cout<<" "<<decls->nth(i)->isCallDecl()<<endl;
-       if(  decls->nth(i)->isCallDecl() 
-            && isValidCallName(decls->nth(i)->getType())
-            && objectEnv.probe(decls->nth(i)->getName()) == NULL 
+        bool iscall = decls->nth(i)->isCallDecl();
+        bool isvalid = isValidCallName(decls->nth(i)->getType());
+        bool firstdecl = objectEnv.probe(decls->nth(i)->getName()) == NULL;
+         //typeid(decls->nth(i)).name;
+         //const type_info &objInfo = typeid(decls->nth(i));
+        //cout<< typeid(decls->nth(i)).name <<endl;
+        if(  iscall
+            && isvalid
+            && firstdecl
           ){
            objectEnv.addid(decls->nth(i)->getName(), new Symbol( decls->nth(i)->getType()));
-           if(decls->nth(i)->getName() == Main) to_main = decls->nth(i); //保存指向main的节点。
+           if(decls->nth(i)->getName() == Main) curr_decl = decls->nth(i); //保存指向main的节点
+           //CallDecl_class * a = reinterpret_cast<CallDecl_class *> (curr_decl);
+           //a->getVariables();
        }
-        else if(decls->nth(i)->isCallDecl() 
-            && !isValidCallName(decls->nth(i)->getType())
-        ){
-              //internal_error(decls->nth(i)->get_line_number());
-              semant_error(decls->nth(i))<<"function returnType invalid"<<endl;
-              //cerr<< "function returnType invalid"<<endl;
+        else if(iscall && !isvalid){
+              semant_error(decls->nth(i))<<"function "<<decls->nth(i)->getName()<<" returnType invalid"<<endl;
         }
-        else if(decls->nth(i)->isCallDecl() 
-                &&  isValidCallName(decls->nth(i)->getType())
-                &&  objectEnv.probe(decls->nth(i)->getName()) != NULL
-                    )
+        else if(iscall && isvalid && !firstdecl)
           {
               //internal_error(decls->nth(i)->get_line_number());
-              semant_error(decls->nth(i))<<"conflict function name"<<endl;
+              semant_error(decls->nth(i))<<"redeclaration of func "<<decls->nth(i)->getName()<<endl;
               //cerr<< "conflict function name"<<endl;
           }
-
     }
     //objectEnv.exitscope();
 
 }
 
 static void install_globalVars(Decls decls) {
-    objectEnv.enterscope();
+    objectEnv.enterscope(); //需要与其他函数联动考量是否打开一个scope
     for(int i = decls->first(); decls->more(i); i = decls->next(i)){
-         if( !decls->nth(i)->isCallDecl()
-         && objectEnv.probe(decls->nth(i)->getName()) == NULL 
-         && isValidTypeName(decls->nth(i)->getType())
+        bool isvardecl = !decls->nth(i)->isCallDecl();
+        bool isvalid = isValidTypeName(decls->nth(i)->getType());
+        bool firstdecl = objectEnv.probe(decls->nth(i)->getName()) == NULL;
+         if( isvardecl
+         && firstdecl
+         && isvalid
           ){
             objectEnv.addid(decls->nth(i)->getName(), new Symbol( decls->nth(i)->getType()));
          }
-         else if(!decls->nth(i)->isCallDecl()
-         && !isValidTypeName(decls->nth(i)->getType())
+         else if(isvardecl
+         && !isvalid
          ){
-              
-              semant_error(decls->nth(i))<<"VAR declaration type invalid"<<endl;
-
+              semant_error(decls->nth(i))<<"VAR declaration type invalid, can not be void. "<<endl;
          }
-         else if(!decls->nth(i)->isCallDecl()
-         && isValidTypeName(decls->nth(i)->getType())
-         && objectEnv.probe(decls->nth(i)->getName()) != NULL 
+         else if(isvardecl
+         && isvalid
+         && !firstdecl
          ){
-
               semant_error(decls->nth(i))<<"redeclaration of var "<<decls->nth(i)->getName()<<endl;
-
          }
     }
     //objectEnv.exitscope();
 }
 
 static void check_calls(Decls decls) {
-
+    //check function calls one by one
+    for(int i = decls->first(); decls->more(i) && decls->nth(i)->isCallDecl(); i = decls->next(i)){
+        //check_call_return();
+        //check_call_
+    }
 }
 
 static void check_main() {
+    bool main_exist = objectEnv.probe(Main) != NULL ;
+    bool return_void = *(objectEnv.lookup(Main)) == Void ; 
+    CallDecl_class * a = reinterpret_cast<CallDecl_class *> (curr_decl);
+    //a->dump_with_types(cout ,0);
+    bool no_variables =  a->getVariables()->len() == 0;
     if(objectEnv.probe(Main) == NULL) semant_error()<<"main func do not exist"<<endl;
-    else if (objectEnv.probe(Main) != NULL && *(objectEnv.lookup(Main)) != Void){
-        semant_error(to_main)<<"main func ought to return Void"<<endl;
+    else if (main_exist && !return_void){
+        semant_error(curr_decl)<<"main func ought to return Void"<<endl;
     }
-    objectEnv.exitscope();
+    else if (main_exist && return_void && !no_variables){
+        semant_error(curr_decl)<<"main func ought to have no variables"<<endl;
+    }
+    objectEnv.exitscope(); //函数名的检查处理结束
 }
 
 void VariableDecl_class::check() {

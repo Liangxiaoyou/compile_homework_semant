@@ -2,9 +2,8 @@
 this a correct example of SEAL 
 */
 var main Int;
-var a Void;
 var a Bool;
-func main() Int{
+func main() Void{
     x=1;
 return ;
 }

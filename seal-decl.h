@@ -17,6 +17,10 @@ public:
     virtual Symbol getName() = 0;
     virtual Symbol getType() = 0;
     virtual void check() = 0;
+
+   //////////////////////////////////////////////////////////////
+   //virtual Variables getVariables() =0;
+   //virtual StmtBlock getBody()= 0;
 };
 
 
