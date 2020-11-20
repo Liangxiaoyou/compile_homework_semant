@@ -25,6 +25,7 @@ public:
    }
    void check(Symbol a) {checkType();}
    void dump_type(ostream&, int);
+   int  judgeType(){return 7;}
 
    virtual void dump_with_types(ostream&,int) = 0; 
 	virtual void dump(ostream&,int) = 0;

@@ -100,7 +100,8 @@ static void install_calls(Decls decls) {
         if (iscall){
             bool isvalid = isValidCallName(decls->nth(i)->getType());
             bool firstdecl = funcEnv.probe(decls->nth(i)->getName()) == NULL;
-            bool return_exist ;
+            bool return_exist = false;
+            bool return_valid = false;
                 {
                     CallDecl_class* curr_call;
                     curr_call = reinterpret_cast<CallDecl_class *> (decls->nth(i));
@@ -108,17 +109,18 @@ static void install_calls(Decls decls) {
                         curr_call->getBody()->getStmts()->more(i); 
                         i =curr_call->getBody()->getStmts()->next(i) 
                         )
-                        {
-                            ReturnStmt_class curr_stmt = curr_call->getBody()->getStmts()->nth(i);
+                        {   if(curr_call->getBody()->getStmts()->nth(i)->judgeType() == 4){
+                                return_exist = true;
+                                ReturnStmt_class * curr_stmt = reinterpret_cast<ReturnStmt_class *> (curr_call->getBody()->getStmts()->nth(i));
+                                Symbol returnType = curr_stmt->getValue()->getType();
+                                return_valid = (returnType == curr_call->getType() )? true: false;
+                        }
 
                         }
                 }
-            if(  isvalid && firstdecl){
-            funcEnv.addid(decls->nth(i)->getName(), new Symbol( decls->nth(i)->getType()));
-            //idtable.add_string(decls->nth(i)->getName()->get_string());
-            if(decls->nth(i)->getName() == Main) curr_decl = decls->nth(i); //保存指向main的节点
-            //CallDecl_class * a = reinterpret_cast<CallDecl_class *> (curr_decl);
-            //a->getVariables();
+            if(isvalid && firstdecl && return_exist && return_valid){
+                funcEnv.addid(decls->nth(i)->getName(), new Symbol( decls->nth(i)->getType()));
+                if(decls->nth(i)->getName() == Main) curr_decl = decls->nth(i); //保存指向main的节点
             }
             else if(!isvalid){
                 semant_error(decls->nth(i))<<"function "<<decls->nth(i)->getName()<<" returnType invalid"<<endl;
@@ -126,6 +128,14 @@ static void install_calls(Decls decls) {
             else if( isvalid && !firstdecl)
             {
                 semant_error(decls->nth(i))<<"redeclaration of func "<<decls->nth(i)->getName()<<endl;
+            }
+            else if (isvalid && firstdecl && !return_exist)
+            {
+                semant_error(decls->nth(i))<<"return of func "<<decls->nth(i)->getName()<< " not exist in the overall scope"<<endl;
+            }
+            else if (isvalid && firstdecl && return_exist && !return_valid)
+            {
+                semant_error(decls->nth(i))<<"return of func "<<decls->nth(i)->getName()<< " not match"<<endl;
             }
         }
     }
@@ -136,11 +146,13 @@ static void install_calls(Decls decls) {
 }
 
 static void install_globalVars(Decls decls) {
+
     objectEnv.enterscope(); //需要与其他函数联动考量是否打开一个scope
     for(int i = decls->first(); decls->more(i); i = decls->next(i)){
         bool isvardecl = !decls->nth(i)->isCallDecl();
         bool isvalid = isValidTypeName(decls->nth(i)->getType());
         bool firstdecl = objectEnv.probe(decls->nth(i)->getName()) == NULL;
+        
          if( isvardecl
          && firstdecl
          && isvalid
@@ -159,6 +171,7 @@ static void install_globalVars(Decls decls) {
               semant_error(decls->nth(i))<<"redeclaration of var "<<decls->nth(i)->getName()<<endl;
          }
     }
+        
     //objectEnv.exitscope();
 }
 
@@ -178,8 +191,11 @@ static void check_calls(Decls decls) {
 }
 
 static void check_main() {
+    
     bool main_exist = funcEnv.probe(Main) != NULL ;
+    if (main_exist){
     bool return_void = *(funcEnv.probe(Main)) == Void ; 
+    cerr<<"@段错误@"<<endl;
     CallDecl_class * a = reinterpret_cast<CallDecl_class *> (curr_decl);
     //a->dump_with_types(cout ,0);
     bool no_variables =  a->getVariables()->len() == 0;
@@ -189,6 +205,7 @@ static void check_main() {
     }
     else if (main_exist && return_void && !no_variables){
         semant_error(curr_decl)<<"main func ought to have no variables"<<endl;
+    }
     }
     //objectEnv.exitscope(); //函数名的检查处理结束
 }
@@ -384,11 +401,12 @@ Symbol No_expr_class::checkType(){
 void Program_class::semant() {
     initialize_constants(); //初始化常量类型
     install_calls(decls);   //初始化函数
+        funcEnv.dump();
+    objectEnv.dump();
     check_main();           //检查主函数
     install_globalVars(decls);//全局变量初始化
     check_calls(decls);       //检查函数合法性
-    funcEnv.dump();
-    objectEnv.dump();
+
 
     if (semant_errors > 0) {
         cerr << "Compilation halted due to static semantic errors." << endl;

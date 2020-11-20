@@ -1,18 +1,7 @@
 /* 
 this a correct example of SEAL 
 */
-var x Bool;
-func main() Int{
-    var x Int;
-    var y Int;
-    x = 5;
-    for  x = 0; x<5 ; x =x+1 {
-    var y Bool ;
-    y= ~y;
-    }
-return x;
-}
-func f1( x Int, y Int ,x Bool ) Void
-{
+func main () Void{
+    var x Int ;
 
 }

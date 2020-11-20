@@ -22,7 +22,18 @@ public:
 	// for semantic analysis
 };
 
-
+/*****************************************
+*增设一个判断句子类型的辅助函数judgeType()
+ default 0
+ IfStmt_class 1
+ ForStmt_class 2
+ WhileStmt_class 3
+ ReturnStmt_class 4
+ ContinueStmt_class 5
+ BreakStmt_class 6
+ Expr_class 7
+*
+*****************************************/
 class Stmt_class : public tree_node {
 public:
 	tree_node *copy()		 { return copy_Stmt(); }
@@ -30,6 +41,7 @@ public:
 	virtual void dump_with_types(ostream&,int) = 0; 
 	virtual void dump(ostream&,int) = 0;
 	virtual void check(Symbol) = 0;
+	virtual int  judgeType(){return 0;}
 };
 
 class StmtBlock_class : public Stmt_class {
@@ -69,6 +81,7 @@ public:
 	void check(Symbol);
 	void dump(ostream& stream, int n);
 	void dump_with_types(ostream&,int);
+	int  judgeType(){return 1;}
 };
 
 
@@ -89,6 +102,7 @@ public:
 	void check(Symbol);
 	void dump(ostream& stream, int n);
 	void dump_with_types(ostream&,int);
+	int  judgeType(){return 3;}
 };
 
 class ForStmt_class : public Stmt_class {
@@ -110,6 +124,7 @@ public:
     Stmt copy_Stmt();
 	void dump(ostream& stream, int n);
 	void dump_with_types(ostream&,int);
+	int  judgeType(){return 2;}
 };
 
 
@@ -126,6 +141,7 @@ public:
 	void check(Symbol);
     void dump_with_types(ostream&,int);
     void dump(ostream& stream, int n);
+	int  judgeType(){return 4;}
 };
 
 class ContinueStmt_class : public Stmt_class {
@@ -135,6 +151,7 @@ public:
 	void check(Symbol);
     void dump_with_types(ostream&,int);
     void dump(ostream& stream, int n);
+	int  judgeType(){return 5;}
 };
 
 
@@ -145,6 +162,7 @@ public:
 	void check(Symbol);
     void dump_with_types(ostream&,int);
     void dump(ostream& stream, int n);
+	int  judgeType(){return 6;}
 };
 
 typedef class Program_class *Program;
@@ -207,5 +225,7 @@ ForStmt forstmt(Expr, Expr, Expr, StmtBlock);
 ReturnStmt returnstmt(Expr);
 ContinueStmt continuestmt();
 BreakStmt breakstmt();
+
+
 
 #endif
