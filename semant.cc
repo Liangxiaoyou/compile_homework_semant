@@ -102,8 +102,8 @@ static void install_calls(Decls decls) {
         if (iscall){
             bool isvalid = isValidCallName(decls->nth(i)->getType()); //函数返回值不为Void
             bool firstdecl = funcEnv.probe(decls->nth(i)->getName()) == NULL;
-            bool return_exist = false;
-            bool return_valid = false;
+            bool return_exist = false;//还不能做返回值类型的检查，因为变量没有声明，也没有初始化！
+            //bool return_valid = false;
                 {
                     CallDecl_class* curr_call;
                     curr_call = reinterpret_cast<CallDecl_class *> (decls->nth(i));
@@ -113,13 +113,13 @@ static void install_calls(Decls decls) {
                         )
                         {   if(curr_call->getBody()->getStmts()->nth(i)->judgeType() == 4){
                                 return_exist = true;
-                                ReturnStmt_class * curr_stmt = reinterpret_cast<ReturnStmt_class *> (curr_call->getBody()->getStmts()->nth(i));
-                                Symbol returnType = curr_stmt->getValue()->getType();
-                                return_valid = (returnType == curr_call->getType() )? true: false;
+                                //ReturnStmt_class * curr_stmt = reinterpret_cast<ReturnStmt_class *> (curr_call->getBody()->getStmts()->nth(i));
+                                //Symbol returnType = curr_stmt->getValue()->getType();
+                                //return_valid = (returnType == curr_call->getType() )? true: false;
                         }
                         }
                 }
-            if(isvalid && firstdecl && return_exist && return_valid){
+            if(isvalid && firstdecl && return_exist ){
                 funcEnv.addid(decls->nth(i)->getName(), new Symbol( decls->nth(i)->getType()));
                 if(decls->nth(i)->getName() == Main) curr_decl = decls->nth(i); //保存指向main的节点
             }
@@ -133,10 +133,6 @@ static void install_calls(Decls decls) {
             else if (isvalid && firstdecl && !return_exist)
             {
                 semant_error(decls->nth(i))<<"return of func "<<decls->nth(i)->getName()<< " not exist in the overall scope"<<endl;
-            }
-            else if (isvalid && firstdecl && return_exist && !return_valid)
-            {
-                semant_error(decls->nth(i))<<"return of func "<<decls->nth(i)->getName()<< " not match"<<endl;
             }
         }
     }
@@ -312,7 +308,7 @@ void StmtBlock_class::check(Symbol type) {
 }
 
 void IfStmt_class::check(Symbol type) {
-    bool condition_is_bool = condition->getType() == Bool;
+    bool condition_is_bool = condition->checkType() == Bool;
     if(!condition_is_bool) 
         {semant_error(curr_stmt)<<"condition of \"if\" ought to be Bool"<<endl;}
     thenexpr->check(type);
@@ -320,7 +316,7 @@ void IfStmt_class::check(Symbol type) {
 }
 
 void WhileStmt_class::check(Symbol type) {
-    bool condition_is_bool = condition->getType() == Bool;
+    bool condition_is_bool = condition->checkType() == Bool;
     if(!condition_is_bool) 
         {semant_error(curr_stmt)<<"condition of \"while\" ought to be Bool"<<endl;}
     body->check(type);
@@ -328,7 +324,7 @@ void WhileStmt_class::check(Symbol type) {
 }
 
 void ForStmt_class::check(Symbol type) {
-    bool condition_is_bool = condition->getType() == Bool;
+    bool condition_is_bool = condition->checkType() == Bool;
     bool condition_is_void = condition->is_empty_Expr();//要检查一下是不是Void 还是No_type
     if(condition_is_bool || condition_is_void) ;
     else{semant_error(curr_stmt)<<"condition of \"for\" ought to be Bool or Void"<<endl;}
@@ -336,7 +332,7 @@ void ForStmt_class::check(Symbol type) {
 }
 
 void ReturnStmt_class::check(Symbol type) {
-    if(type == value->getType());
+    if(type == value->checkType());
     else{semant_error(curr_stmt)<<"the return type does not match the function"<<endl;}   
 }
 
@@ -356,62 +352,121 @@ Symbol Call_class::checkType(){
         setType(*(funcEnv.lookup(name)));
         return type;
     }
-    else {semant_error(curr_stmt)<<"can not find definition of "<<name<<endl;}
+    else 
+    {
+        semant_error(curr_stmt)<<"can not find definition of "<<name<<endl;
+        setType(Void);
+        return type;
+    }
 
         //actuals 检查
 }
-
+//actuals 检查
 Symbol Actual_class::checkType(){
     setType(expr->checkType());
     return type;
 }
 
 Symbol Assign_class::checkType(){
+    Symbol l = *(objectEnv.lookup(lvalue)) ,r = value->checkType();
     if(objectEnv.lookup(lvalue) != NULL){
-        cerr<<"@ hello"<<endl;
-        if (*(objectEnv.lookup(lvalue)) != value->checkType())
-            semant_error(curr_stmt)<<"the assign of "<<lvalue<<" not match"<<endl;
+        //cerr<<"@ hello"<<endl;
+        if (l != r){
+            
+            semant_error(curr_stmt)<<"the assign of "<<lvalue<<" from "<<r<<" to "<<l<<" not match"<<endl;
+        }
         else{setType(*(objectEnv.lookup(lvalue)));
         return type;}
     }
-    else semant_error(curr_stmt)<<"can not find definition of "<<lvalue<<endl;
-    setType(Float);
-    return type;
+    else{
+        semant_error(curr_stmt)<<"can not find definition of "<<lvalue<<endl;
+        setType(Void);
+        return type;
+        }
 }
 
 Symbol Add_class::checkType(){
-    if(e1->getType() == e2->getType()){
-    setType(e1->getType());
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if(a1 == a2 && (a1 == Int ||a1== Bool))
+    {
+        setType(a1);
+        return type;
     }
-    else semant_error(curr_stmt)<<" type of add expr between "<<e1->getType()<<"and"<<e2->getType()<<" not match"<<endl;
-    setType(Float);
-    return type;
+    else {
+        semant_error(curr_stmt)<<"type of add expr between "<<a1<<" and "<<a2<<" not match or not valid"<<endl;
+        setType(Void);
+        return type;
+        }
 }
 
 Symbol Minus_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if(a1 == a2 && (a1 == Int ||a1== Bool))
+    {
+        setType(a1);
+        return type;
+    }
+    else {
+        semant_error(curr_stmt)<<" type of minus expr between "<<a1<<" and "<<a2<<" not match or not valid"<<endl;
+        setType(Void);
+        return type;
+        }
 }
 
 Symbol Multi_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if(a1 == a2 && (a1 == Int ||a1== Bool))
+    {
+        setType(a1);
+        return type;
+    }
+    else {
+        semant_error(curr_stmt)<<" type of multi expr between "<<a1<<"and"<<a2<<" not match or not valid"<<endl;
+        setType(Void);
+        return type;
+        }
 }
 
 Symbol Divide_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if(a1 == a2 && (a1 == Int ||a1== Bool))
+    {
+        setType(a1);
+        return type;
+    }
+    else {
+        semant_error(curr_stmt)<<" type of divide expr between "<<a1<<" and "<<a2<<" not match or not valid"<<endl;
+        setType(Void);
+        return type;
+        }
 }
 
 Symbol Mod_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if(a1 == a2 && (a1 == Int ))
+    {
+        setType(a1);
+        return type;
+    }
+    else {
+        semant_error(curr_stmt)<<" type of mod expr between "<<a1<<" and "<<a2<<" not match or not valid"<<endl;
+        setType(Void);
+        return type;
+        }
 }
 
 Symbol Neg_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType();
+    if((a1 == Int )||(a1 == Float ))
+    {
+        setType(a1);
+        return type;
+    }
+    else {
+        semant_error(curr_stmt)<<" type of neg expr"<<a1<<" not match or not valid"<<endl;
+        setType(Void);
+        return type;
+        }
 }
 
 Symbol Lt_class::checkType(){
@@ -500,8 +555,16 @@ Symbol Const_bool_class::checkType(){
 }
 ////////////////////////////////////////////////////////
 Symbol Object_class::checkType(){
-    setType(getType());
-    return type;
+    if(objectEnv.lookup(var) != NULL)
+    {
+        setType(*objectEnv.lookup(var));
+        return getType();
+    }
+    else
+    {
+        setType(Void);
+        return getType();
+    }
 }
 
 ////////////////////////////////////////////////////////
@@ -513,7 +576,7 @@ Symbol No_expr_class::checkType(){
 void Program_class::semant() {
     initialize_constants(); //初始化常量类型
     install_calls(decls);   //初始化函数
-        funcEnv.dump();
+    funcEnv.dump();
     objectEnv.dump();
     check_main();           //检查主函数
     install_globalVars(decls);//全局变量初始化

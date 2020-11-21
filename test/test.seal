@@ -9,7 +9,7 @@ func main() Void{
 	var b Float;
 	var c Float;
 	a=true;
-	b=2.0;
+	b=-2.0;
 	c=loop(a,b);
     return ;
 }
