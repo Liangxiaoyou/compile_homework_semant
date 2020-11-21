@@ -12,6 +12,7 @@ static int semant_errors = 0; //错误计数
 static Decl curr_decl = 0;
 static Stmt curr_stmt = 0;
 static Decl_class * to_main; //指向第一个main函数的指针，方便用于check main
+static int  into_loop = 0;
 
 typedef SymbolTable<Symbol, Symbol> ObjectEnvironment; // name, type  
 ObjectEnvironment objectEnv,funcEnv; //函数表，变量表
@@ -267,21 +268,41 @@ void StmtBlock_class::check(Symbol type) {
             }break;
 
             case 2:{
+                into_loop ++;
+                curr_stmt = stmts->nth(i);
+                curr_stmt->check(type);
+                into_loop --;
             }break;
 
             case 3:{
+                into_loop ++;
+                curr_stmt = stmts->nth(i);
+                curr_stmt->check(type);
+                into_loop --;
             }break;
 
-            case 4:
+            case 4:{
+                curr_stmt = stmts->nth(i);
+                curr_stmt->check(type);
+            }
             break;
 
-            case 5:
+            case 5:{
+                curr_stmt = stmts->nth(i);
+                curr_stmt->check(type);
+            }
             break;
 
-            case 6:
+            case 6:{
+                curr_stmt = stmts->nth(i);
+                curr_stmt->check(type);
+            }
             break;
 
-            case 7:
+            case 7:{
+                curr_stmt = stmts->nth(i);
+                curr_stmt->check(type);
+            }
             break;
 
             default:{semant_error(stmts->nth(i))<<"get an unknow wrong when analyze line "<<stmts->nth(i)->get_line_number()<<endl;}
@@ -293,48 +314,78 @@ void StmtBlock_class::check(Symbol type) {
 void IfStmt_class::check(Symbol type) {
     bool condition_is_bool = condition->getType() == Bool;
     if(!condition_is_bool) 
-        {semant_error(curr_stmt)<<"condition of if ought to be Bool"<<endl;}
+        {semant_error(curr_stmt)<<"condition of \"if\" ought to be Bool"<<endl;}
     thenexpr->check(type);
     elseexpr->check(type);
 }
 
 void WhileStmt_class::check(Symbol type) {
+    bool condition_is_bool = condition->getType() == Bool;
+    if(!condition_is_bool) 
+        {semant_error(curr_stmt)<<"condition of \"while\" ought to be Bool"<<endl;}
+    body->check(type);
 
 }
 
 void ForStmt_class::check(Symbol type) {
-
+    bool condition_is_bool = condition->getType() == Bool;
+    bool condition_is_void = condition->is_empty_Expr();//要检查一下是不是Void 还是No_type
+    if(condition_is_bool || condition_is_void) ;
+    else{semant_error(curr_stmt)<<"condition of \"for\" ought to be Bool or Void"<<endl;}
+    body->check(type);
 }
 
 void ReturnStmt_class::check(Symbol type) {
-
+    if(type == value->getType());
+    else{semant_error(curr_stmt)<<"the return type does not match the function"<<endl;}   
 }
 
 void ContinueStmt_class::check(Symbol type) {
-
+    if (into_loop > 0) ;
+    else{semant_error(curr_stmt)<<"the continue sentence should be used in a loop"<<endl;}
 }
 
 void BreakStmt_class::check(Symbol type) {
-
+    if (into_loop > 0) ;
+    else{semant_error(curr_stmt)<<"the break sentence should be used in a loop"<<endl;}
 }
 
 Symbol Call_class::checkType(){
-    setType(Float);
-    return type;
+    if(funcEnv.lookup(name) != NULL)
+    {
+        setType(*(funcEnv.lookup(name)));
+        return type;
+    }
+    else {semant_error(curr_stmt)<<"can not find definition of "<<name<<endl;}
+
+        //actuals 检查
 }
 
 Symbol Actual_class::checkType(){
-setType(Float);
+    setType(expr->checkType());
     return type;
 }
 
 Symbol Assign_class::checkType(){
-setType(Float);
+    if(objectEnv.lookup(lvalue) != NULL){
+        cerr<<"@ hello"<<endl;
+        if (*(objectEnv.lookup(lvalue)) != value->checkType())
+            semant_error(curr_stmt)<<"the assign of "<<lvalue<<" not match"<<endl;
+        else{setType(*(objectEnv.lookup(lvalue)));
+        return type;}
+    }
+    else semant_error(curr_stmt)<<"can not find definition of "<<lvalue<<endl;
+    setType(Float);
     return type;
 }
 
 Symbol Add_class::checkType(){
-setType(Float);
+    if(e1->getType() == e2->getType()){
+    setType(e1->getType());
+    return type;
+    }
+    else semant_error(curr_stmt)<<" type of add expr between "<<e1->getType()<<"and"<<e2->getType()<<" not match"<<endl;
+    setType(Float);
     return type;
 }
 
