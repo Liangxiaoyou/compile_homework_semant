@@ -10,6 +10,7 @@ extern char *curr_filename;
 static ostream& error_stream = cerr; //输出错误信息流
 static int semant_errors = 0; //错误计数
 static Decl curr_decl = 0;
+static Stmt curr_stmt = 0;
 static Decl_class * to_main; //指向第一个main函数的指针，方便用于check main
 
 typedef SymbolTable<Symbol, Symbol> ObjectEnvironment; // name, type  
@@ -98,7 +99,7 @@ static void install_calls(Decls decls) {
     {
         bool iscall = decls->nth(i)->isCallDecl();
         if (iscall){
-            bool isvalid = isValidCallName(decls->nth(i)->getType());
+            bool isvalid = isValidCallName(decls->nth(i)->getType()); //函数返回值不为Void
             bool firstdecl = funcEnv.probe(decls->nth(i)->getName()) == NULL;
             bool return_exist = false;
             bool return_valid = false;
@@ -115,7 +116,6 @@ static void install_calls(Decls decls) {
                                 Symbol returnType = curr_stmt->getValue()->getType();
                                 return_valid = (returnType == curr_call->getType() )? true: false;
                         }
-
                         }
                 }
             if(isvalid && firstdecl && return_exist && return_valid){
@@ -150,7 +150,7 @@ static void install_globalVars(Decls decls) {
     objectEnv.enterscope(); //需要与其他函数联动考量是否打开一个scope
     for(int i = decls->first(); decls->more(i); i = decls->next(i)){
         bool isvardecl = !decls->nth(i)->isCallDecl();
-        bool isvalid = isValidTypeName(decls->nth(i)->getType());
+        bool isvalid = isValidTypeName(decls->nth(i)->getType()); 
         bool firstdecl = objectEnv.probe(decls->nth(i)->getName()) == NULL;
         
          if( isvardecl
@@ -194,18 +194,17 @@ static void check_main() {
     
     bool main_exist = funcEnv.probe(Main) != NULL ;
     if (main_exist){
-    bool return_void = *(funcEnv.probe(Main)) == Void ; 
-    cerr<<"@段错误@"<<endl;
-    CallDecl_class * a = reinterpret_cast<CallDecl_class *> (curr_decl);
-    //a->dump_with_types(cout ,0);
-    bool no_variables =  a->getVariables()->len() == 0;
-    if(!main_exist) semant_error()<<"main func do not exist"<<endl;
-    else if (main_exist && !return_void){
-        semant_error(curr_decl)<<"main func ought to return Void"<<endl;
-    }
-    else if (main_exist && return_void && !no_variables){
-        semant_error(curr_decl)<<"main func ought to have no variables"<<endl;
-    }
+        bool return_void = *(funcEnv.probe(Main)) == Void ; 
+        CallDecl_class * a = reinterpret_cast<CallDecl_class *> (curr_decl);
+        //a->dump_with_types(cout ,0);
+        bool no_variables =  a->getVariables()->len() == 0;
+        if(!main_exist) semant_error(curr_decl)<<"main func do not exist"<<endl;
+        else if (main_exist && !return_void){
+            semant_error(curr_decl)<<"main func ought to return Void"<<endl;
+        }
+        else if (main_exist && return_void && !no_variables){
+            semant_error(curr_decl)<<"main func ought to have no variables"<<endl;
+        }
     }
     //objectEnv.exitscope(); //函数名的检查处理结束
 }
@@ -219,22 +218,84 @@ void CallDecl_class::check() {
     objectEnv.enterscope();
     for(int i = paras->first(); paras->more(i); i = paras->next(i)){
         bool first_decl = objectEnv.probe(paras->nth(i)->getName()) == NULL;
-        bool is_not_void = paras->nth(i)->getType() != Void;
+        bool is_not_void = isValidTypeName( paras->nth(i)->getType() );
         if(first_decl && is_not_void)
         objectEnv.addid( paras->nth(i)->getName() ,new Symbol(paras->nth(i)->getType()));
         else if (!first_decl ) {semant_error(paras->nth(i))<<"redeclaration of Var "<<paras->nth(i)->getName()<<" in the same scope "<<endl;}
         else if (first_decl && !is_not_void) {semant_error(paras->nth(i))<<"type  of Var "<<paras->nth(i)->getName()<<" can not be Void "<<endl;}
     }
+    body->check(returnType);
 
     objectEnv.exitscope();
 }
 
+//传的参数应该是返回值类型，之前只是保证了最外环有一个合法的return ，
+//但是要是检测内部其他的return，仍然需要知晓函数的返回类型
 void StmtBlock_class::check(Symbol type) {
+    //check vars
+    objectEnv.enterscope();
+    for(int i = vars->first(); vars->more(i); i = vars->next(i)){
+        bool first_decl = objectEnv.probe(vars->nth(i)->getName()) == NULL;
+        bool is_not_void = isValidTypeName( vars->nth(i)->getType() );
+        if(first_decl && is_not_void)
+            objectEnv.addid( vars->nth(i)->getName() ,new Symbol(vars->nth(i)->getType()));
+        else if (!first_decl ) 
+            {semant_error(vars->nth(i))<<"redeclaration of Var "<<vars->nth(i)->getName()<<" in the same scope "<<endl;}
+        else if(first_decl && !is_not_void)
+            {semant_error(vars->nth(i))<<"type  of Var "<<vars->nth(i)->getName()<<" can not be Void "<<endl;}
+    }
+    //check stmts
+    //要特别注意continue，break的处理
+    /*****************************************
+    *增设一个判断句子类型的辅助函数judgeType()
+    default 0
+    IfStmt_class 1
+    ForStmt_class 2
+    WhileStmt_class 3
+    ReturnStmt_class 4
+    ContinueStmt_class 5
+    BreakStmt_class 6
+    Expr_class 7
+    *
+    *****************************************/
+    for (int i = stmts->first(); stmts->more(i); i = stmts->next(i)){
+        int type_of_stmt = stmts->nth(i)->judgeType();
+        switch(type_of_stmt){
+            case 1:{
+                curr_stmt = stmts->nth(i);
+                curr_stmt->check(type);
+            }break;
 
+            case 2:{
+            }break;
+
+            case 3:{
+            }break;
+
+            case 4:
+            break;
+
+            case 5:
+            break;
+
+            case 6:
+            break;
+
+            case 7:
+            break;
+
+            default:{semant_error(stmts->nth(i))<<"get an unknow wrong when analyze line "<<stmts->nth(i)->get_line_number()<<endl;}
+        }
+
+    }
 }
 
 void IfStmt_class::check(Symbol type) {
-
+    bool condition_is_bool = condition->getType() == Bool;
+    if(!condition_is_bool) 
+        {semant_error(curr_stmt)<<"condition of if ought to be Bool"<<endl;}
+    thenexpr->check(type);
+    elseexpr->check(type);
 }
 
 void WhileStmt_class::check(Symbol type) {

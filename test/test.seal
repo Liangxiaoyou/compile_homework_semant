@@ -1,7 +1,28 @@
 /* 
-this a correct example of SEAL 
+this a correct false of SEAL 
+13: Function loop, type Float of parameter a does not conform to declared type Bool.
+7: Function main must have an overall return statement.
+Compilation halted due to static semantic errors.
 */
-func main () Void{
-    var x Int ;
-
+func main() Void{
+	var a Bool;
+	var b Float;
+	var c Float;
+	a=true;
+	b=2.0;
+	c=loop(a,b);
+    return ;
+}
+func loop(a Bool,b Float) Float{
+    var a Bool;
+    while a{
+        while a{
+        b=b+1;
+        if b>=99999.9{
+            a=false;
+            break;
+        }
+        }
+    }
+    return b;
 }
