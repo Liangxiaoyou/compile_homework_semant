@@ -10,7 +10,7 @@ extern char *curr_filename;
 static ostream& error_stream = cerr; //输出错误信息流
 static int semant_errors = 0; //错误计数
 static Decl curr_decl = 0;
-static Stmt curr_stmt = 0;
+static Stmt  curr_stmt = 0;
 static Decl_class * to_main; //指向第一个main函数的指针，方便用于check main
 static int  into_loop = 0;
 
@@ -136,8 +136,8 @@ static void install_calls(Decls decls) {
             }
         }
     }
-    cerr<<"打印idtable："<<endl;
-    idtable.print();
+    //cerr<<"打印idtable："<<endl;
+    //idtable.print();
     //objectEnv.exitscope();
 
 }
@@ -176,10 +176,10 @@ static void check_calls(Decls decls) {
     //check function calls one by one
     //int to_main;
     CallDecl_class* curr_call;
-    cerr<<"@ 5"<<endl;
+    //cerr<<"@ 5"<<endl;
     for(int i = decls->first(); decls->more(i) ; i = decls->next(i)){
         if( decls->nth(i)->isCallDecl()){
-        curr_call = reinterpret_cast<CallDecl_class *> (decls->nth(i));
+        curr_call =  reinterpret_cast<CallDecl_class *> (decls->nth(i));
         //cerr<<"@ 3"<<endl;
         curr_call->check();
         //cerr<<"@ 4"<<endl;
@@ -260,44 +260,44 @@ void StmtBlock_class::check(Symbol type) {
         switch(type_of_stmt){
             case 1:{
                 curr_stmt = stmts->nth(i);
-                curr_stmt->check(type);
+                stmts->nth(i)->check(type);
             }break;
 
             case 2:{
                 into_loop ++;
-                curr_stmt = stmts->nth(i);
-                curr_stmt->check(type);
+                curr_stmt = stmts->nth(i);//会有问题吗
+                stmts->nth(i)->check(type);
                 into_loop --;
             }break;
 
             case 3:{
                 into_loop ++;
                 curr_stmt = stmts->nth(i);
-                curr_stmt->check(type);
+                stmts->nth(i)->check(type);
                 into_loop --;
             }break;
 
             case 4:{
                 curr_stmt = stmts->nth(i);
-                curr_stmt->check(type);
+                stmts->nth(i)->check(type);
             }
             break;
 
             case 5:{
                 curr_stmt = stmts->nth(i);
-                curr_stmt->check(type);
+                stmts->nth(i)->check(type);
             }
             break;
 
             case 6:{
                 curr_stmt = stmts->nth(i);
-                curr_stmt->check(type);
+                stmts->nth(i)->check(type);
             }
             break;
 
             case 7:{
                 curr_stmt = stmts->nth(i);
-                curr_stmt->check(type);
+                stmts->nth(i)->check(type);
             }
             break;
 
@@ -324,6 +324,8 @@ void WhileStmt_class::check(Symbol type) {
 }
 
 void ForStmt_class::check(Symbol type) {
+    initexpr->checkType();
+    loopact->checkType();
     bool condition_is_bool = condition->checkType() == Bool;
     bool condition_is_void = condition->is_empty_Expr();//要检查一下是不是Void 还是No_type
     if(condition_is_bool || condition_is_void) ;
@@ -332,8 +334,9 @@ void ForStmt_class::check(Symbol type) {
 }
 
 void ReturnStmt_class::check(Symbol type) {
-    if(type == value->checkType());
-    else{semant_error(curr_stmt)<<"the return type does not match the function"<<endl;}   
+    Symbol a = value->checkType();
+    if(type == a);
+    else{semant_error(curr_stmt)<<"the return type is "<<a<<" but the function need "<<type<<endl;}   
 }
 
 void ContinueStmt_class::check(Symbol type) {
@@ -392,6 +395,11 @@ Symbol Add_class::checkType(){
         setType(a1);
         return type;
     }
+    else if(a1 == Int && a2 == Float ||a1 == Float && a2 == Int)
+    {
+        setType(Float);
+        return type;
+    }
     else {
         semant_error(curr_stmt)<<"type of add expr between "<<a1<<" and "<<a2<<" not match or not valid"<<endl;
         setType(Void);
@@ -404,6 +412,11 @@ Symbol Minus_class::checkType(){
     if(a1 == a2 && (a1 == Int ||a1== Bool))
     {
         setType(a1);
+        return type;
+    }
+    else if(a1 == Int && a2 == Float ||a1 == Float && a2 == Int)
+    {
+        setType(Float);
         return type;
     }
     else {
@@ -420,6 +433,11 @@ Symbol Multi_class::checkType(){
         setType(a1);
         return type;
     }
+    else if(a1 == Int && a2 == Float ||a1 == Float && a2 == Int)
+    {
+        setType(Float);
+        return type;
+    }
     else {
         semant_error(curr_stmt)<<" type of multi expr between "<<a1<<"and"<<a2<<" not match or not valid"<<endl;
         setType(Void);
@@ -432,6 +450,11 @@ Symbol Divide_class::checkType(){
     if(a1 == a2 && (a1 == Int ||a1== Bool))
     {
         setType(a1);
+        return type;
+    }
+    else if(a1 == Int && a2 == Float ||a1 == Float && a2 == Int)
+    {
+        setType(Float);
         return type;
     }
     else {
@@ -463,75 +486,197 @@ Symbol Neg_class::checkType(){
         return type;
     }
     else {
-        semant_error(curr_stmt)<<" type of neg expr"<<a1<<" not match or not valid"<<endl;
+        semant_error(curr_stmt)<<" type of neg expr to "<<a1<<" not valid"<<endl;
         setType(Void);
         return type;
         }
 }
 
 Symbol Lt_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if((a1 == Int ||a1 == Float) &&(a2 == Int || a2 == Float))
+    {
+        setType(Bool);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not compare a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Le_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if((a1 == Int ||a1 == Float) &&(a2 == Int || a2 == Float))
+    {
+        setType(Bool);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not compare a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Equ_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if((a1 == Int || a1== Float) && (a2 == Int || a2 == Float)||(a1 == Bool && a2 == Bool))
+    {
+        setType(Bool);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not compare a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Neq_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if((a1 == Int || a1== Float) && (a2 == Int || a2 == Float)||(a1 == Bool && a2 == Bool))
+    {
+        setType(Bool);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not compare a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Ge_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if((a1 == Int ||a1 == Float) &&(a2 == Int || a2 == Float))
+    {
+        setType(Bool);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not compare a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Gt_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if((a1 == Int ||a1 == Float) &&(a2 == Int || a2 == Float))
+    {
+        setType(Bool);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not compare a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol And_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if(a1 == Bool && a2 == Bool)
+    {
+        setType(Bool);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not make logic and between a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Or_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if(a1 == Bool && a2 == Bool)
+    {
+        setType(Bool);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not make logic or between a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Xor_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if(a1 == Bool && a2 == Bool)
+    {
+        setType(Bool);
+        return type;
+    }
+    else if(a1 == Int && a2 == Int)
+    {
+        setType(Int);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not make logic xor between a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Not_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType();
+    if(a1 == Bool )
+    {
+        setType(Bool);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not make logic not on a "<<a1<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Bitand_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if(a1 == Int && a2 == Int)
+    {
+        setType(Int);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not make bit-and between a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Bitor_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType(), a2 = e2->checkType();
+    if(a1 == Int && a2 == Int)
+    {
+        setType(Int);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not make bit-or between a "<<a1<<" and a "<<a2<<endl;
+        setType(Void);
+        return type;
+    }
 }
 
 Symbol Bitnot_class::checkType(){
-setType(Float);
-    return type;
+    Symbol a1 = e1->checkType();
+    if(a1 == Int)
+    {
+        setType(Int);
+        return type;
+    }
+    else{
+        semant_error(curr_stmt)<<"can not make bit-not on a "<<a1<<endl;
+        setType(Void);
+        return type;
+    }
 }
 ////////////////////////////////////////////////////////////
 Symbol Const_int_class::checkType(){
@@ -558,12 +703,12 @@ Symbol Object_class::checkType(){
     if(objectEnv.lookup(var) != NULL)
     {
         setType(*objectEnv.lookup(var));
-        return getType();
+        return type;
     }
     else
     {
         setType(Void);
-        return getType();
+        return type;
     }
 }
 
@@ -576,8 +721,8 @@ Symbol No_expr_class::checkType(){
 void Program_class::semant() {
     initialize_constants(); //初始化常量类型
     install_calls(decls);   //初始化函数
-    funcEnv.dump();
-    objectEnv.dump();
+    //funcEnv.dump();
+    //objectEnv.dump();
     check_main();           //检查主函数
     install_globalVars(decls);//全局变量初始化
     check_calls(decls);       //检查函数合法性

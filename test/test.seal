@@ -8,6 +8,8 @@ func main() Void{
 	var a Bool;
 	var b Float;
 	var c Float;
+    var d Int;
+    d != a;
 	a=true;
 	b=-2.0;
 	c=loop(a,b);
