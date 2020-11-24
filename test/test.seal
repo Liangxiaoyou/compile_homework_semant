@@ -4,18 +4,7 @@ this a correct false of SEAL
 7: Function main must have an overall return statement.
 Compilation halted due to static semantic errors.
 */
-func main() Void{
-	var a Bool;
-	var b Float;
-	var c Float;
-    var d Int;
-    d != a;
-	a=true;
-	b=-2.0;
-	c=loop(a,b);
-    return ;
-}
-func loop(a Bool,b Float) Float{
+func loop(a Bool,b Float ,c Int ,d Int, e String ,f Int) Float{
     var a Bool;
     while a{
         while a{
@@ -27,4 +16,16 @@ func loop(a Bool,b Float) Float{
         }
     }
     return b;
+}
+
+func main() Void{
+	var a Bool;
+	var b Float;
+	var c Float;
+    var d Int;
+    d != a;
+	a=true;
+	b=-2.0;
+	c=loop(a,b);
+    return ;
 }

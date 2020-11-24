@@ -1,5 +1,6 @@
 make clean
 make semant
 cp semant ./test
-./test/semant ./test/test5.seal > ./test/test5.seal.out
-diff ./test/test5.seal.out ./test-answer/test5.seal.out
+./test/semant ./test/test2.seal > ./test/test2.seal.out
+echo "--------Test and diff -----------------------------"
+diff ./test/test2.seal.out ./test-answer/test2.seal.out

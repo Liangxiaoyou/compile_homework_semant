@@ -14,6 +14,7 @@ static Stmt  curr_stmt = 0;
 static Decl_class * to_main; //指向第一个main函数的指针，方便用于check main
 static int  into_loop = 0;
 
+
 typedef SymbolTable<Symbol, Symbol> ObjectEnvironment; // name, type  
 ObjectEnvironment objectEnv,funcEnv; //函数表，变量表
 ///////////////////////////////////////////////
@@ -93,9 +94,37 @@ static bool sameType(Symbol name1, Symbol name2) {
     return strcmp(name1->get_string(), name2->get_string()) == 0;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////
+//
+//需要实现一个类，用来存储函数名和参数类型
+//使用此类时必须注意para数量不能大于6个，否则出错
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+class func_paras{
+    private:
+        Symbol name;
+        Symbol paras [6] ;//limite within 6 paras
+        int num_paras ;
+    
+    public:
+        func_paras(){num_paras = 0;for(int i = 0;i++;i<6)paras[i] = Void;}
+        void setName(Symbol a){name = a ;/*cerr<<" make func-paras of "<<a<<endl;*/}
+        void add_para(Symbol a){paras[num_paras++] = a;/*cerr<<" add paras "<<a<<" of "<<name<<endl;*/}
+        Symbol getParaType(int num){ return paras[num];}
+        Symbol getName(){return name;}
+        int get_num_paras(){return num_paras;}
+        ~func_paras(){}
+};
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+static func_paras functable[20];
+static int num_func =0;
 static void install_calls(Decls decls) {
     funcEnv.enterscope();
     funcEnv.addid(print, new Symbol(Void));
+
     for(int i = decls->first(); decls->more(i); i = decls->next(i))
     {
         bool iscall = decls->nth(i)->isCallDecl();
@@ -103,11 +132,11 @@ static void install_calls(Decls decls) {
             bool isvalid = isValidCallName(decls->nth(i)->getType()); //函数返回值不为Void
             bool firstdecl = funcEnv.probe(decls->nth(i)->getName()) == NULL;
             bool return_exist = false;//还不能做返回值类型的检查，因为变量没有声明，也没有初始化！
-            //bool return_valid = false;
-                {
-                    CallDecl_class* curr_call;
-                    curr_call = reinterpret_cast<CallDecl_class *> (decls->nth(i));
-                    for(int i = curr_call->getBody()->getStmts()->first(); 
+                //check return exist
+            CallDecl_class* curr_call;
+            curr_call = reinterpret_cast<CallDecl_class *> (decls->nth(i));
+                //check return exist
+                for(int i = curr_call->getBody()->getStmts()->first(); 
                         curr_call->getBody()->getStmts()->more(i); 
                         i =curr_call->getBody()->getStmts()->next(i) 
                         )
@@ -116,9 +145,27 @@ static void install_calls(Decls decls) {
                                 //ReturnStmt_class * curr_stmt = reinterpret_cast<ReturnStmt_class *> (curr_call->getBody()->getStmts()->nth(i));
                                 //Symbol returnType = curr_stmt->getValue()->getType();
                                 //return_valid = (returnType == curr_call->getType() )? true: false;
+                            }
                         }
+                //if get paras ,save their type
+                functable[num_func].setName(curr_call->getName());
+                if (curr_call->getVariables()->len()>0 && curr_call->getVariables()->len()<7)
+                {
+                    for(int i = curr_call->getVariables()->first(); 
+                        curr_call->getVariables()->more(i); 
+                        i =curr_call->getVariables()->next(i) ){
+                        functable[num_func].add_para( curr_call->getVariables()->nth(i)->getType() );
                         }
+                    //cerr<<"save paras of "<<curr_call->getName()<<" succesfully"<<endl;
+                    
                 }
+                else if (curr_call->getVariables()->len()>6)
+                {
+                    semant_error(decls->nth(i))<<"function "<<decls->nth(i)->getName()<<" get paras more than 6!"<<endl;break;
+                }
+                num_func ++;
+                
+            
             if(isvalid && firstdecl && return_exist ){
                 funcEnv.addid(decls->nth(i)->getName(), new Symbol( decls->nth(i)->getType()));
                 if(decls->nth(i)->getName() == Main) curr_decl = decls->nth(i); //保存指向main的节点
@@ -350,10 +397,42 @@ void BreakStmt_class::check(Symbol type) {
 }
 
 Symbol Call_class::checkType(){
-    if(funcEnv.lookup(name) != NULL)
-    {
-        setType(*(funcEnv.lookup(name)));
-        return type;
+    bool exist = funcEnv.lookup(name) != NULL ;
+    bool match = true;
+    int i =0 ;
+        for(; i<num_func;i++)
+        {
+            if(functable[i].getName() == name ) {
+                break;
+            }
+        }
+    if(exist)
+    {   
+
+        if( functable[i].get_num_paras() == actuals->len() )
+        {
+            if(actuals->len() != 0)
+            {
+                for(int j = actuals->first(); actuals->more(j); j = actuals->next(j)){
+                    Symbol actualj = actuals->nth(j)->checkType();
+                    Symbol fun_actualj =functable[i].getParaType(j);
+                    if (fun_actualj != actualj) 
+                    {
+                        semant_error(curr_stmt)<<"the number "<<j<<" paras of call \""<<name<<"\" should be "<< fun_actualj<< " but we got "<<actualj<<endl;
+                        match = false;
+                    }
+                    //else cerr<<"the number "<<j<<" paras of "<<name<<" match"<<endl;
+                }
+            }
+            setType(*(funcEnv.lookup(name)));//不管参数匹不匹配，函数已经存在，就应该返回声明的返回值。
+            return type;
+        }
+        else 
+        {
+            semant_error(curr_stmt)<<"the number of actuals of the call is not match the func "<<name<<endl;
+            setType(*(funcEnv.lookup(name)));//不管参数匹不匹配，函数已经存在，就应该返回声明的返回值。
+            return type;
+        }
     }
     else 
     {
@@ -362,7 +441,7 @@ Symbol Call_class::checkType(){
         return type;
     }
 
-        //actuals 检查
+    
 }
 //actuals 检查
 Symbol Actual_class::checkType(){
@@ -707,6 +786,7 @@ Symbol Object_class::checkType(){
     }
     else
     {
+        semant_error(curr_stmt)<<"can not find definition of "<<var<<endl; 
         setType(Void);
         return type;
     }
