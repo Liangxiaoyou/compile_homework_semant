@@ -1,4 +1,4 @@
 make clean
 make semant
 cp semant ./test
-./test/semant ./test/test2.seal > ./test/test2.seal.out
+./test/semant ./test/test.seal > ./test/test.seal.out

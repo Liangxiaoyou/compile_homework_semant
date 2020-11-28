@@ -123,13 +123,13 @@ static func_paras functable[20];
 static int num_func =0;
 static void install_calls(Decls decls) {
     funcEnv.enterscope();
-    funcEnv.addid(print, new Symbol(Void));
+    funcEnv.addid(print, new Symbol(Void));//先保存下printf函数
 
     for(int i = decls->first(); decls->more(i); i = decls->next(i))
     {
         bool iscall = decls->nth(i)->isCallDecl();
         if (iscall){
-            bool isvalid = isValidCallName(decls->nth(i)->getType()); //函数返回值不为Void
+            //bool isvalid = isValidCallName(decls->nth(i)->getType()); //函数名称不能是printf
             bool firstdecl = funcEnv.probe(decls->nth(i)->getName()) == NULL;
             bool return_exist = false;//还不能做返回值类型的检查，因为变量没有声明，也没有初始化！
                 //check return exist
@@ -166,18 +166,18 @@ static void install_calls(Decls decls) {
                 num_func ++;
                 
             
-            if(isvalid && firstdecl && return_exist ){
+            if( firstdecl && return_exist ){
                 funcEnv.addid(decls->nth(i)->getName(), new Symbol( decls->nth(i)->getType()));
                 if(decls->nth(i)->getName() == Main) curr_decl = decls->nth(i); //保存指向main的节点
             }
-            else if(!isvalid){
-                semant_error(decls->nth(i))<<"function "<<decls->nth(i)->getName()<<" returnType invalid"<<endl;
-            }
-            else if( isvalid && !firstdecl)
+            //else if(!isvalid){
+            //    semant_error(decls->nth(i))<<"function "<<decls->nth(i)->getName()<<" returnType invalid"<<endl;
+            //}
+            else if( !firstdecl)
             {
                 semant_error(decls->nth(i))<<"redeclaration of func "<<decls->nth(i)->getName()<<endl;
             }
-            else if (isvalid && firstdecl && !return_exist)
+            else if (firstdecl && !return_exist)
             {
                 semant_error(decls->nth(i))<<"return of func "<<decls->nth(i)->getName()<< " not exist in the overall scope"<<endl;
             }
@@ -194,7 +194,7 @@ static void install_globalVars(Decls decls) {
     objectEnv.enterscope(); //需要与其他函数联动考量是否打开一个scope
     for(int i = decls->first(); decls->more(i); i = decls->next(i)){
         bool isvardecl = !decls->nth(i)->isCallDecl();
-        bool isvalid = isValidTypeName(decls->nth(i)->getType()); 
+        bool isvalid = isValidTypeName(decls->nth(i)->getType());
         bool firstdecl = objectEnv.probe(decls->nth(i)->getName()) == NULL;
         
          if( isvardecl
@@ -399,48 +399,72 @@ void BreakStmt_class::check(Symbol type) {
 Symbol Call_class::checkType(){
     bool exist = funcEnv.lookup(name) != NULL ;
     bool match = true;
-    int i =0 ;
-        for(; i<num_func;i++)
-        {
-            if(functable[i].getName() == name ) {
-                break;
-            }
-        }
-    if(exist)
-    {   
-
-        if( functable[i].get_num_paras() == actuals->len() )
-        {
-            if(actuals->len() != 0)
+    bool is_printf = name == (Symbol)print;
+    if(!is_printf)
+    {
+        int i =0 ;
+            for(; i<num_func;i++)
             {
-                for(int j = actuals->first(); actuals->more(j); j = actuals->next(j)){
-                    Symbol actualj = actuals->nth(j)->checkType();
-                    Symbol fun_actualj =functable[i].getParaType(j);
-                    if (fun_actualj != actualj) 
-                    {
-                        semant_error(curr_stmt)<<"the number "<<j<<" paras of call \""<<name<<"\" should be "<< fun_actualj<< " but we got "<<actualj<<endl;
-                        match = false;
-                    }
-                    //else cerr<<"the number "<<j<<" paras of "<<name<<" match"<<endl;
+                if(functable[i].getName() == name ) {
+                    break;
                 }
             }
-            setType(*(funcEnv.lookup(name)));//不管参数匹不匹配，函数已经存在，就应该返回声明的返回值。
-            return type;
+        if(exist)
+        {   
+            if( functable[i].get_num_paras() == actuals->len() )
+            {
+                if(actuals->len() != 0)
+                {
+                    for(int j = actuals->first(); actuals->more(j); j = actuals->next(j)){
+                        Symbol actualj = actuals->nth(j)->checkType();
+                        Symbol fun_actualj =functable[i].getParaType(j);
+                        if (fun_actualj != actualj) 
+                        {
+                            semant_error(curr_stmt)<<"the number "<<j<<" paras of call \""<<name<<"\" should be "<< fun_actualj<< " but we got "<<actualj<<endl;
+                            match = false;
+                        }
+                        //else cerr<<"the number "<<j<<" paras of "<<name<<" match"<<endl;
+                    }
+                }
+                setType(*(funcEnv.lookup(name)));//不管参数匹不匹配，函数已经存在，就应该返回声明的返回值。
+                return type;
+            }
+            else 
+            {
+                semant_error(curr_stmt)<<"the number of actuals of the call is not match the func "<<name<<endl;
+                setType(*(funcEnv.lookup(name)));//不管参数匹不匹配，函数已经存在，就应该返回声明的返回值。
+                return type;
+            }
         }
         else 
         {
-            semant_error(curr_stmt)<<"the number of actuals of the call is not match the func "<<name<<endl;
-            setType(*(funcEnv.lookup(name)));//不管参数匹不匹配，函数已经存在，就应该返回声明的返回值。
+            semant_error(curr_stmt)<<"can not find definition of "<<name<<endl;
+            setType(Void);
             return type;
         }
     }
-    else 
+    else //is printf()
     {
-        semant_error(curr_stmt)<<"can not find definition of "<<name<<endl;
-        setType(Void);
-        return type;
+        bool no_actuals = actuals->len() == 0 ;
+        if (no_actuals) 
+        {
+            semant_error(curr_stmt)<<"the function printf must have one actuals at least"<<endl;
+            setType(Void);
+            return type;
+        }
+        else 
+        { 
+            int  i = actuals->first();
+            Symbol first_actual = actuals->nth(i)->checkType();
+            bool first_string = first_actual == String;
+            if(!first_string)
+            {
+                semant_error(curr_stmt)<<"the first para of function printf ought to be String. but we got "<<first_actual<<endl;
+                setType(Void);
+                return type;
+            }
+        }
     }
-
     
 }
 //actuals 检查

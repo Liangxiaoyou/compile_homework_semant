@@ -4,6 +4,21 @@ this a correct false of SEAL
 7: Function main must have an overall return statement.
 Compilation halted due to static semantic errors.
 */
+func printf(a Bool,b Float ,c Int ,d Int, e String ,f Int) Void{
+    var a Bool;
+    var he String;
+    while a{
+        while a{
+        b=b+1;
+        if b>=99999.9{
+            a=false;
+            break;
+        }
+        }
+        printf();
+    }
+    return b;
+}
 func loop(a Bool,b Float ,c Int ,d Int, e String ,f Int) Float{
     var a Bool;
     while a{
@@ -14,6 +29,7 @@ func loop(a Bool,b Float ,c Int ,d Int, e String ,f Int) Float{
             break;
         }
         }
+        printf(3);
     }
     return b;
 }
